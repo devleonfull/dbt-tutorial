@@ -1,81 +1,55 @@
-{{ config(materialized="table") }}
+with
 
-WITH customers AS (
+customers as (
 
-    SELECT * FROM {{ ref('stg_jaffle_shop__customers') }}
-
-),
-
-orders AS (
-
-    SELECT * FROM {{ ref('stg_jaffle_shop__orders') }}
+    select * from {{ ref('stg_jaffle_shop__customers') }}
 
 ),
 
-payments AS (
+orders as (
 
-    SELECT * FROM {{ ref('stg_stripe__payments') }}
-
-),
-
-
-
-payments_order AS (
-
-    SELECT
-        order_id,
-        sum(CASE
-            WHEN payment_status = 'success' THEN payment_amount
-            ELSE 0
-        END) AS total_payment
-
-    FROM payments
-
-    GROUP BY order_id
+    select * from {{ ref('stg_jaffle_shop__orders') }}
 
 ),
 
-order_total AS (
-    SELECT
-        orders.*,
-        payments_order.total_payment
+fct_orders as (
 
-    FROM orders
-    LEFT JOIN payments_order ON orders.order_id = payments_order.order_id
-),
-
-customers_orders AS (
-
-    SELECT
-        customer_id,
-        max(order_date) AS most_recent_order_date,
-        min(order_date) AS first_order_date,
-        count(*) AS total_orders,
-        sum(total_payment) AS total_value
-
-    FROM order_total
-
-    GROUP BY customer_id
+    select * from {{ ref('fct_orders') }}
 
 ),
 
-final AS (
+orders_summary_by_user as (
 
-    SELECT
+    select
+        fct_orders.customer_id,
+        min(orders.order_date) as first_order_date,
+        max(orders.order_date) as most_recent_order_date,
+        count(distinct fct_orders.order_id) as total_orders,
+        sum(fct_orders.total) as lifetime_value 
+
+    from fct_orders
+    left join orders on fct_orders.order_id = orders.order_id
+    group by 1
+
+),
+
+final as (
+
+    select
         customers.customer_id,
         customers.first_name,
         customers.last_name,
-        customers_orders.first_order_date,
-        customers_orders.most_recent_order_date,
-        coalesce(customers_orders.total_orders, 0) AS number_of_orders,
-        coalesce(customers_orders.total_value, 0) AS lifetime_value
+        orders_summary_by_user.first_order_date,
+        orders_summary_by_user.most_recent_order_date,
+        coalesce(orders_summary_by_user.total_orders, 0) as total_orders,
+        coalesce(orders_summary_by_user.lifetime_value, 0) as lifetime_value
 
-    FROM customers
+    from customers
 
-    LEFT JOIN
-        customers_orders
-        ON customers.customer_id = customers_orders.customer_id
+    left join
+        orders_summary_by_user
+        on customers.customer_id = orders_summary_by_user.customer_id
 
 )
 
-SELECT * FROM final
+select * from final 

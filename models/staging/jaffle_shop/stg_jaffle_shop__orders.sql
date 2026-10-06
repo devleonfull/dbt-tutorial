@@ -1,7 +1,26 @@
-SELECT
-    id AS order_id,
-    user_id AS customer_id,
-    order_date,
-    status
+with 
 
-FROM {{ source('jaffle_shop', 'orders') }}
+source as (
+
+    select * from {{ source('jaffle_shop', 'orders') }}
+
+),
+
+renamed as (
+
+    select
+        ------- ids
+        id AS order_id,
+        user_id AS customer_id,
+
+        ------- strings
+        status as order_status,
+
+        ------- dates
+        order_date    
+
+    from source
+
+)
+
+select * from renamed

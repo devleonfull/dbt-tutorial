@@ -1,24 +1,25 @@
+with
 
-WITH source AS (
+source as (
 
-    SELECT * FROM {{ source('stripe', 'payment') }}
+    select * from {{ source('stripe', 'payment') }}
 
 ),
 
-renamed AS (
+renamed as (
 
-    SELECT
-        id AS payment_id,
-        orderid AS order_id,
-        paymentmethod AS payment_method,
-        status AS payment_status,
-        amount AS payment_amount,
-        created AS payment_created,
+    select
+        id as payment_id,
+        orderid as order_id,
+        paymentmethod as method,
+        status,
+        amount/100 as amount,
+        created as created_at,
         _batched_at
     
-    FROM source
+    from source
 
 )
 
 
-SELECT * FROM renamed
+select * from renamed

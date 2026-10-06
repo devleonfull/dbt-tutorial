@@ -1,38 +1,38 @@
- 
-WITH 
+with 
 
-payments AS (
+payments as (
 
-   SELECT * FROM {{ ref('stg_stripe__payments') }}
-
-),
-
-orders AS (
-
-    SELECT * FROM {{ ref('stg_jaffle_shop__orders') }}
+   select * from {{ ref('stg_stripe__payments') }}
 
 ),
 
-order_payments AS (
+orders as (
 
-    SELECT 
+    select * from {{ ref('stg_jaffle_shop__orders') }}
+
+),
+
+totals_by_order as (
+
+    select 
        order_id,
-       sum(CASE WHEN payment_status='success' THEN payment_amount END) AS total_payment
-    FROM payments
-    GROUP BY 1
+       sum(case when status='success' then amount end) as total
+    from payments
+    group by 1
 
 ),
 
 final as (
 
-    SELECT 
+    select 
         orders.order_id,
         orders.customer_id,
-        order_payments.total_payment AS payment_amount
+        coalesce(totals_by_order.total, 0) as total
 
-    FROM orders
-    LEFT JOIN  order_payments ON order_payments.order_id = orders.order_id
+    from orders
+    left join  totals_by_order on orders.order_id = totals_by_order.order_id
 
 )
 
-SELECT * FROM final
+select * from final
+
