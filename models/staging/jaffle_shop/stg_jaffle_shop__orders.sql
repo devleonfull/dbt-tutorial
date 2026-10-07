@@ -14,7 +14,7 @@ renamed as (
         user_id AS customer_id,
 
         ------- strings
-        status as order_status,
+        status,
 
         ------- dates
         order_date    
